@@ -3,178 +3,320 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ROS Site DAT - Optimized</title>
+    <title>ROS Site DAT - Full CRUD</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; overflow-x: hidden; }
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
         .glass-morphism { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(0,0,0,0.05); }
-        .loading-shimmer { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
-        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .status-resident { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .status-construction { background-color: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+        .status-empty { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        .nav-active { color: #2563eb; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
-<body class="pb-10">
+<body class="pb-24">
 
-    <header class="sticky top-0 z-50 glass-morphism px-4 py-4 mb-6">
+    <!-- Header -->
+    <header class="sticky top-0 z-40 glass-morphism shadow-sm px-4 py-4 mb-4">
         <div class="max-w-md mx-auto flex flex-col gap-3">
             <div class="flex justify-between items-center">
-                <h1 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-                    <i class="fas fa-database text-blue-600"></i>
-                    ROS Site DAT <span class="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded">V3.0</span>
-                </h1>
-                <span id="dbStatus" class="text-[10px] font-bold px-2 py-1 bg-slate-100 text-slate-500 rounded uppercase">Offline</span>
+                <h1 id="pageTitle" class="text-xl font-bold text-gray-800">ROS <span class="text-blue-600">Home</span></h1>
+                <div class="flex gap-2">
+                    <button onclick="toggleModal('recordModal')" class="bg-blue-600 text-white p-2 rounded-lg shadow-sm"><i class="fas fa-plus"></i></button>
+                    <label class="bg-white border text-gray-400 p-2 rounded-lg cursor-pointer shadow-sm">
+                        <i class="fas fa-file-upload"></i>
+                        <input type="file" id="fileInput" class="hidden" accept=".docx" onchange="syncWordToOfflineDB(this)">
+                    </label>
+                </div>
             </div>
             
-            <div class="relative">
-                <input 
-                    type="text" 
-                    id="searchInput"
-                    placeholder="Search by Name, Plot, or Phone..."
-                    class="w-full pl-10 pr-4 py-3 rounded-xl border-none bg-gray-100 focus:ring-2 focus:ring-blue-500 transition-all outline-none text-gray-700 shadow-inner"
-                    oninput="debounceSearch()"
-                >
-                <i class="fas fa-search absolute left-3 top-4 text-gray-400"></i>
-            </div>
-            
-            <div class="flex justify-between items-center px-1">
-                <label class="text-[11px] text-blue-600 font-bold cursor-pointer flex items-center gap-1 hover:opacity-70">
-                    <i class="fas fa-sync-alt"></i> UPDATE FROM WORD
-                    <input type="file" id="fileInput" class="hidden" accept=".docx" onchange="syncWordToOfflineDB(this)">
-                </label>
-                <button onclick="clearLocalDB()" class="text-[11px] text-red-400 hover:text-red-600 uppercase font-bold">Clear Cache</button>
+            <div id="searchSection">
+                <div class="relative mb-3">
+                    <input type="text" id="searchInput" placeholder="Search names, plots..." class="w-full pl-10 pr-4 py-3 rounded-2xl bg-gray-100 outline-none focus:ring-2 focus:ring-blue-500 transition-all" oninput="debounceSearch()">
+                    <i class="fas fa-search absolute left-4 top-4 text-gray-400"></i>
+                </div>
+                <div class="flex gap-2 overflow-x-auto no-scrollbar">
+                    <select id="blockFilter" onchange="debounceSearch()" class="px-4 py-2 rounded-full bg-white border text-[10px] font-bold uppercase outline-none">
+                        <option value="ALL">All Blocks</option>
+                        <option value="A">Block A</option>
+                        <option value="B">Block B</option>
+                        <option value="C">Block C</option>
+                    </select>
+                </div>
             </div>
         </div>
     </header>
 
+    <!-- Content Sections -->
     <main class="max-w-md mx-auto px-4">
-        <div id="resultsCount" class="mb-4 text-xs font-semibold text-gray-400 uppercase tracking-widest">
-            Ready to browse
+        <div id="homeTab">
+            <div id="resultsCount" class="mb-4 text-[9px] font-black text-gray-400 text-center tracking-widest uppercase">Sync to load data</div>
+            <div id="resultsList" class="space-y-3"></div>
         </div>
 
-        <div id="resultsList" class="space-y-4">
-            <!-- Data cards injected here -->
-            <div class="text-center py-20 opacity-30">
-                <i class="fas fa-folder-open text-5xl mb-4 block"></i>
-                <p>Sync database.docx to begin</p>
+        <div id="summaryTab" class="hidden">
+            <div class="bg-white p-6 rounded-[2.5rem] shadow-sm mb-6">
+                <h3 class="text-center text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">Plot Status Distribution</h3>
+                <canvas id="statusChart" class="max-h-[300px]"></canvas>
             </div>
+            <div id="statCards" class="grid grid-cols-1 gap-3"></div>
         </div>
     </main>
 
+    <!-- Bottom Navigation -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-8 py-4 flex justify-around items-center z-50">
+        <button onclick="switchTab('home')" id="homeBtn" class="flex flex-col items-center gap-1 nav-active transition-all">
+            <i class="fas fa-home text-xl"></i>
+            <span class="text-[10px] font-bold uppercase">Home</span>
+        </button>
+        <button onclick="switchTab('summary')" id="summaryBtn" class="flex flex-col items-center gap-1 text-gray-300 transition-all">
+            <i class="fas fa-chart-pie text-xl"></i>
+            <span class="text-[10px] font-bold uppercase">Summary</span>
+        </button>
+    </nav>
+
+    <!-- Detail Card Overlay -->
+    <div id="detailOverlay" class="fixed inset-0 z-50 hidden bg-black/40 backdrop-blur-sm flex items-end justify-center">
+        <div class="bg-white w-full max-w-md rounded-t-[2.5rem] p-8 shadow-2xl relative">
+            <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6 cursor-pointer" onclick="closeDetail()"></div>
+            <div id="detailViewBody"></div>
+        </div>
+    </div>
+
+    <!-- Management Modal -->
+    <div id="recordModal" class="fixed inset-0 z-50 hidden bg-black/60 flex items-center justify-center px-4">
+        <div class="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-xl">
+            <h2 id="modalHeader" class="font-bold text-lg mb-4 text-gray-800">Add/Edit Record</h2>
+            <form id="recordForm" class="grid grid-cols-2 gap-3 text-sm">
+                <input type="hidden" id="editId">
+                <input type="text" id="m_name" placeholder="Name" class="col-span-2 bg-gray-50 p-3 rounded-xl border outline-none" required>
+                <input type="text" id="m_phone" placeholder="Phone" class="col-span-2 bg-gray-50 p-3 rounded-xl border outline-none" required>
+                <input type="text" id="m_block" placeholder="Block" class="bg-gray-50 p-3 rounded-xl border outline-none" required>
+                <input type="text" id="m_plot" placeholder="Plot #" class="bg-gray-50 p-3 rounded-xl border outline-none" required>
+                <input type="text" id="m_street" placeholder="Street" class="bg-gray-50 p-3 rounded-xl border outline-none" required>
+                <input type="text" id="m_sn" placeholder="S/N" class="bg-gray-50 p-3 rounded-xl border outline-none" required>
+                <select id="m_status" class="col-span-2 bg-gray-50 p-3 rounded-xl border outline-none font-bold">
+                    <option value="RESIDENT">RESIDENT</option>
+                    <option value="CONSTRUCTION">CONSTRUCTION</option>
+                    <option value="EMPTY">EMPTY</option>
+                </select>
+                <div class="col-span-2 flex gap-2 mt-4">
+                    <button type="button" onclick="toggleModal('recordModal')" class="flex-1 p-3 text-gray-400 font-bold uppercase text-[10px]">Cancel</button>
+                    <button type="submit" class="flex-1 bg-blue-600 text-white rounded-xl font-bold uppercase text-[10px]">Save Record</button>
+                </div>
+            </form>
+            <button onclick="clearAllData()" class="w-full mt-4 text-red-400 font-bold text-[9px] uppercase tracking-widest opacity-50 hover:opacity-100">Wipe Entire Database</button>
+        </div>
+    </div>
+
     <script>
         let db;
-        const DB_NAME = "ROSSiteDB";
+        let myChart = null;
+        const DB_NAME = "ROSSiteDB_V7";
         const STORE_NAME = "records";
 
-        // Initialize Offline Database (IndexedDB)
         const request = indexedDB.open(DB_NAME, 1);
         request.onupgradeneeded = (e) => {
             db = e.target.result;
             db.createObjectStore(STORE_NAME, { keyPath: "id", autoIncrement: true });
         };
-        request.onsuccess = (e) => {
-            db = e.target.result;
-            loadInitialData();
+        request.onsuccess = (e) => { db = e.target.result; loadData(); };
+
+        function switchTab(tab) {
+            document.getElementById('homeTab').classList.toggle('hidden', tab !== 'home');
+            document.getElementById('summaryTab').classList.toggle('hidden', tab !== 'summary');
+            document.getElementById('searchSection').classList.toggle('hidden', tab !== 'home');
+            document.getElementById('pageTitle').innerHTML = tab === 'home' ? 'ROS <span class="text-blue-600">Home</span>' : 'ROS <span class="text-blue-600">Summary</span>';
+            
+            document.getElementById('homeBtn').classList.toggle('nav-active', tab === 'home');
+            document.getElementById('homeBtn').classList.toggle('text-gray-300', tab !== 'home');
+            document.getElementById('summaryBtn').classList.toggle('nav-active', tab === 'summary');
+            document.getElementById('summaryBtn').classList.toggle('text-gray-300', tab !== 'summary');
+            
+            if(tab === 'summary') updateSummary();
+        }
+
+        function updateSummary() {
+            db.transaction(STORE_NAME).objectStore(STORE_NAME).getAll().onsuccess = (e) => {
+                const data = e.target.result;
+                const stats = {
+                    RESIDENT: data.filter(r => r.status === 'RESIDENT').length,
+                    CONSTRUCTION: data.filter(r => r.status === 'CONSTRUCTION').length,
+                    EMPTY: data.filter(r => r.status === 'EMPTY').length
+                };
+
+                if(myChart) myChart.destroy();
+                const ctx = document.getElementById('statusChart').getContext('2d');
+                myChart = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: ['Resident', 'Construction', 'Empty'],
+                        datasets: [{
+                            data: [stats.RESIDENT, stats.CONSTRUCTION, stats.EMPTY],
+                            backgroundColor: ['#4ade80', '#facc15', '#f87171'],
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: { plugins: { legend: { position: 'bottom', labels: { font: { weight: 'bold', size: 10 } } } } }
+                });
+
+                document.getElementById('statCards').innerHTML = `
+                    <div class="bg-white p-4 rounded-2xl flex justify-between items-center shadow-sm border-l-4 border-green-400">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase">Resident</span>
+                        <span class="text-lg font-black text-green-500">${stats.RESIDENT}</span>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl flex justify-between items-center shadow-sm border-l-4 border-yellow-400">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase">Construction</span>
+                        <span class="text-lg font-black text-yellow-500">${stats.CONSTRUCTION}</span>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl flex justify-between items-center shadow-sm border-l-4 border-red-400">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase">Empty</span>
+                        <span class="text-lg font-black text-red-500">${stats.EMPTY}</span>
+                    </div>
+                `;
+            };
+        }
+
+        function loadData() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const block = document.getElementById('blockFilter').value;
+            db.transaction(STORE_NAME).objectStore(STORE_NAME).getAll().onsuccess = (e) => {
+                let data = e.target.result;
+                if (block !== "ALL") data = data.filter(r => r.block === block);
+                if (query) data = data.filter(r => r.name.toLowerCase().includes(query) || r.plot.includes(query) || r.phone.includes(query));
+                renderUI(data);
+            };
+        }
+
+        function renderUI(data) {
+            const list = document.getElementById('resultsList');
+            document.getElementById('resultsCount').innerText = `${data.length} RECORDS IN VIEW`;
+            list.innerHTML = data.map(r => `
+                <div onclick="showDetail(${r.id})" class="bg-white p-4 rounded-2xl shadow-sm flex justify-between items-center active:scale-95 transition-all">
+                    <div class="flex items-center gap-3">
+                        <div class="w-1.5 h-8 rounded-full ${r.status === 'RESIDENT' ? 'bg-green-400' : r.status === 'CONSTRUCTION' ? 'bg-yellow-400' : 'bg-red-400'}"></div>
+                        <div>
+                            <p class="text-[9px] font-black text-blue-500 uppercase">B-${r.block} • P-${r.plot}</p>
+                            <h3 class="text-sm font-bold text-gray-800 uppercase">${r.name}</h3>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-100"></i>
+                </div>
+            `).join('');
+        }
+
+        function showDetail(id) {
+            db.transaction(STORE_NAME).objectStore(STORE_NAME).get(id).onsuccess = (e) => {
+                const r = e.target.result;
+                document.getElementById('detailViewBody').innerHTML = `
+                    <div class="text-center mb-6">
+                        <h2 class="text-2xl font-black text-gray-800 uppercase">${r.name}</h2>
+                        <span class="text-[10px] font-black px-4 py-1 rounded-full uppercase mt-2 inline-block ${r.status === 'RESIDENT' ? 'status-resident' : r.status === 'CONSTRUCTION' ? 'status-construction' : 'status-empty'}">${r.status}</span>
+                    </div>
+                    <div class="bg-gray-50 rounded-3xl p-6 space-y-4 text-xs mb-8">
+                        <div class="flex justify-between border-b pb-2"><span class="text-gray-400 uppercase font-bold">Plot Details</span><span class="font-bold">Block ${r.block}, St ${r.street}, Plot ${r.plot}</span></div>
+                        <div class="flex justify-between border-b pb-2"><span class="text-gray-400 uppercase font-bold">Phone</span><span class="font-bold">${r.phone}</span></div>
+                        <div class="flex justify-between"><span class="text-gray-400 uppercase font-bold">Serial No</span><span class="font-bold">#${r.sn}</span></div>
+                    </div>
+                    <div class="flex gap-2">
+                        <a href="tel:${r.phone}" class="flex-1 bg-gray-900 text-white h-14 rounded-2xl flex items-center justify-center gap-2 font-bold uppercase text-[10px] shadow-lg">Call Member</a>
+                        <button onclick="editRecord(${r.id})" class="w-14 h-14 bg-blue-50 text-blue-500 rounded-2xl"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteRecord(${r.id})" class="w-14 h-14 bg-red-50 text-red-500 rounded-2xl"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                `;
+                document.getElementById('detailOverlay').classList.remove('hidden');
+            };
+        }
+
+        function editRecord(id) {
+            closeDetail();
+            db.transaction(STORE_NAME).objectStore(STORE_NAME).get(id).onsuccess = (e) => {
+                const r = e.target.result;
+                document.getElementById('editId').value = r.id;
+                document.getElementById('m_name').value = r.name;
+                document.getElementById('m_phone').value = r.phone;
+                document.getElementById('m_block').value = r.block;
+                document.getElementById('m_plot').value = r.plot;
+                document.getElementById('m_street').value = r.street;
+                document.getElementById('m_sn').value = r.sn;
+                document.getElementById('m_status').value = r.status;
+                document.getElementById('modalHeader').innerText = "Edit Plot Record";
+                toggleModal('recordModal');
+            };
+        }
+
+        function deleteRecord(id) {
+            if(confirm("Permanently delete this record?")) {
+                const tx = db.transaction(STORE_NAME, "readwrite");
+                tx.objectStore(STORE_NAME).delete(id);
+                tx.oncomplete = () => { closeDetail(); loadData(); };
+            }
+        }
+
+        function clearAllData() {
+            if(confirm("DANGER: This will delete ALL local data. Proceed?")) {
+                const tx = db.transaction(STORE_NAME, "readwrite");
+                tx.objectStore(STORE_NAME).clear();
+                tx.oncomplete = () => { toggleModal('recordModal'); loadData(); };
+            }
+        }
+
+        document.getElementById('recordForm').onsubmit = (e) => {
+            e.preventDefault();
+            const data = {
+                name: document.getElementById('m_name').value.toUpperCase(),
+                phone: document.getElementById('m_phone').value,
+                block: document.getElementById('m_block').value.toUpperCase(),
+                plot: document.getElementById('m_plot').value,
+                street: document.getElementById('m_street').value,
+                sn: document.getElementById('m_sn').value,
+                status: document.getElementById('m_status').value
+            };
+            const id = document.getElementById('editId').value;
+            if (id) data.id = Number(id);
+            const tx = db.transaction(STORE_NAME, "readwrite");
+            tx.objectStore(STORE_NAME).put(data);
+            tx.oncomplete = () => { toggleModal('recordModal'); loadData(); };
         };
 
         async function syncWordToOfflineDB(input) {
             const file = input.files[0];
             if (!file) return;
-
-            document.getElementById('dbStatus').innerText = "Processing...";
             const reader = new FileReader();
-            
             reader.onload = async (e) => {
-                try {
-                    const result = await mammoth.convertToHtml({ arrayBuffer: e.target.result });
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = result.value;
-                    const rows = tempDiv.querySelectorAll('tr');
-                    
-                    const transaction = db.transaction([STORE_NAME], "readwrite");
-                    const store = transaction.objectStore(STORE_NAME);
-                    store.clear(); // Fresh sync
-
-                    rows.forEach(row => {
-                        const cells = Array.from(row.querySelectorAll('td')).map(td => td.innerText.trim());
-                        if (cells.length >= 7 && !cells[0].toLowerCase().includes('s/n')) {
-                            store.add({
-                                sn: cells[0], block: cells[1], street: cells[2],
-                                membership: cells[3], plot: cells[4], name: cells[5],
-                                phone: cells[6], status: cells[7] || 'RESIDENT'
-                            });
-                        }
-                    });
-
-                    transaction.oncomplete = () => {
-                        document.getElementById('dbStatus').innerText = "Synced";
-                        document.getElementById('dbStatus').classList.replace('bg-slate-100', 'bg-green-100');
-                        document.getElementById('dbStatus').classList.replace('text-slate-50', 'text-green-600');
-                        loadInitialData();
-                    };
-                } catch (err) {
-                    alert("Error parsing Word file. Ensure it contains a table.");
-                }
+                const result = await mammoth.convertToHtml({ arrayBuffer: e.target.result });
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = result.value;
+                const rows = Array.from(tempDiv.querySelectorAll('tr'));
+                const tx = db.transaction(STORE_NAME, "readwrite");
+                const store = tx.objectStore(STORE_NAME);
+                rows.forEach(row => {
+                    const cells = Array.from(row.querySelectorAll('td')).map(td => td.innerText.trim());
+                    if (cells.length >= 7 && !cells[0].toLowerCase().includes('s/n')) {
+                        store.put({ sn: cells[0], block: cells[1].toUpperCase(), street: cells[2], membership: cells[3].toUpperCase(), plot: cells[4], name: cells[5].toUpperCase(), phone: cells[6], status: cells[7]?.toUpperCase() || 'EMPTY' });
+                    }
+                });
+                tx.oncomplete = () => loadData();
             };
             reader.readAsArrayBuffer(file);
         }
 
-        function loadInitialData() {
-            const store = db.transaction(STORE_NAME).objectStore(STORE_NAME);
-            const request = store.getAll();
-            request.onsuccess = () => renderUI(request.result);
-        }
-
-        let searchTimeout;
-        function debounceSearch() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                const query = document.getElementById('searchInput').value.toLowerCase();
-                const store = db.transaction(STORE_NAME).objectStore(STORE_NAME);
-                const request = store.getAll();
-                
-                request.onsuccess = () => {
-                    const filtered = request.result.filter(item => 
-                        Object.values(item).some(v => String(v).toLowerCase().includes(query))
-                    );
-                    renderUI(filtered);
-                };
-            }, 300); // 300ms delay to keep UI snappy
-        }
-
-        function renderUI(data) {
-            const list = document.getElementById('resultsList');
-            document.getElementById('resultsCount').innerText = `${data.length} Total Records Found`;
-            
-            list.innerHTML = data.map(item => `
-                <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 hover:border-blue-200 transition-colors">
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <p class="text-[10px] font-bold text-blue-500 uppercase tracking-tighter">B-${item.block} • St-${item.street} • Plot ${item.plot}</p>
-                            <h3 class="text-md font-bold text-gray-800 uppercase">${item.name}</h3>
-                        </div>
-                        <span class="text-[9px] px-2 py-0.5 rounded-full border border-green-100 bg-green-50 text-green-600 font-bold uppercase">
-                            ${item.status}
-                        </span>
-                    </div>
-                    <div class="flex justify-between items-center text-xs text-gray-500 mt-2 pt-2 border-t border-gray-50">
-                        <span><i class="fas fa-id-card mr-1 text-gray-300"></i> ${item.membership}</span>
-                        <a href="tel:${item.phone}" class="text-blue-600 font-bold flex items-center gap-1">
-                            <i class="fas fa-phone-alt"></i> ${item.phone}
-                        </a>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function clearLocalDB() {
-            if(confirm("Wipe local cache? You will need to re-upload database.docx.")) {
-                const transaction = db.transaction([STORE_NAME], "readwrite");
-                transaction.objectStore(STORE_NAME).clear();
-                transaction.oncomplete = () => location.reload();
+        function closeDetail() { document.getElementById('detailOverlay').classList.add('hidden'); }
+        function toggleModal(id) { 
+            document.getElementById(id).classList.toggle('hidden');
+            if(!document.getElementById(id).classList.contains('hidden') && !document.getElementById('editId').value) {
+                document.getElementById('modalHeader').innerText = "Add New Record";
+                document.getElementById('recordForm').reset();
             }
         }
+        let searchTimeout;
+        function debounceSearch() { clearTimeout(searchTimeout); searchTimeout = setTimeout(loadData, 300); }
     </script>
 </body>
 </html>
