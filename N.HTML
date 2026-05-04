@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ROS Site DAT - Optimized</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; overflow-x: hidden; }
+        .glass-morphism { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .loading-shimmer { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    </style>
+</head>
+<body class="pb-10">
+
+    <header class="sticky top-0 z-50 glass-morphism px-4 py-4 mb-6">
+        <div class="max-w-md mx-auto flex flex-col gap-3">
+            <div class="flex justify-between items-center">
+                <h1 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-database text-blue-600"></i>
+                    ROS Site DAT <span class="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded">V3.0</span>
+                </h1>
+                <span id="dbStatus" class="text-[10px] font-bold px-2 py-1 bg-slate-100 text-slate-500 rounded uppercase">Offline</span>
+            </div>
+            
+            <div class="relative">
+                <input 
+                    type="text" 
+                    id="searchInput"
+                    placeholder="Search by Name, Plot, or Phone..."
+                    class="w-full pl-10 pr-4 py-3 rounded-xl border-none bg-gray-100 focus:ring-2 focus:ring-blue-500 transition-all outline-none text-gray-700 shadow-inner"
+                    oninput="debounceSearch()"
+                >
+                <i class="fas fa-search absolute left-3 top-4 text-gray-400"></i>
+            </div>
+            
+            <div class="flex justify-between items-center px-1">
+                <label class="text-[11px] text-blue-600 font-bold cursor-pointer flex items-center gap-1 hover:opacity-70">
+                    <i class="fas fa-sync-alt"></i> UPDATE FROM WORD
+                    <input type="file" id="fileInput" class="hidden" accept=".docx" onchange="syncWordToOfflineDB(this)">
+                </label>
+                <button onclick="clearLocalDB()" class="text-[11px] text-red-400 hover:text-red-600 uppercase font-bold">Clear Cache</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto px-4">
+        <div id="resultsCount" class="mb-4 text-xs font-semibold text-gray-400 uppercase tracking-widest">
+            Ready to browse
+        </div>
+
+        <div id="resultsList" class="space-y-4">
+            <!-- Data cards injected here -->
+            <div class="text-center py-20 opacity-30">
+                <i class="fas fa-folder-open text-5xl mb-4 block"></i>
+                <p>Sync database.docx to begin</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let db;
+        const DB_NAME = "ROSSiteDB";
+        const STORE_NAME = "records";
+
+        // Initialize Offline Database (IndexedDB)
+        const request = indexedDB.open(DB_NAME, 1);
+        request.onupgradeneeded = (e) => {
+            db = e.target.result;
+            db.createObjectStore(STORE_NAME, { keyPath: "id", autoIncrement: true });
+        };
+        request.onsuccess = (e) => {
+            db = e.target.result;
+            loadInitialData();
+        };
+
+        async function syncWordToOfflineDB(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            document.getElementById('dbStatus').innerText = "Processing...";
+            const reader = new FileReader();
+            
+            reader.onload = async (e) => {
+                try {
+                    const result = await mammoth.convertToHtml({ arrayBuffer: e.target.result });
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = result.value;
+                    const rows = tempDiv.querySelectorAll('tr');
+                    
+                    const transaction = db.transaction([STORE_NAME], "readwrite");
+                    const store = transaction.objectStore(STORE_NAME);
+                    store.clear(); // Fresh sync
+
+                    rows.forEach(row => {
+                        const cells = Array.from(row.querySelectorAll('td')).map(td => td.innerText.trim());
+                        if (cells.length >= 7 && !cells[0].toLowerCase().includes('s/n')) {
+                            store.add({
+                                sn: cells[0], block: cells[1], street: cells[2],
+                                membership: cells[3], plot: cells[4], name: cells[5],
+                                phone: cells[6], status: cells[7] || 'RESIDENT'
+                            });
+                        }
+                    });
+
+                    transaction.oncomplete = () => {
+                        document.getElementById('dbStatus').innerText = "Synced";
+                        document.getElementById('dbStatus').classList.replace('bg-slate-100', 'bg-green-100');
+                        document.getElementById('dbStatus').classList.replace('text-slate-50', 'text-green-600');
+                        loadInitialData();
+                    };
+                } catch (err) {
+                    alert("Error parsing Word file. Ensure it contains a table.");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function loadInitialData() {
+            const store = db.transaction(STORE_NAME).objectStore(STORE_NAME);
+            const request = store.getAll();
+            request.onsuccess = () => renderUI(request.result);
+        }
+
+        let searchTimeout;
+        function debounceSearch() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                const query = document.getElementById('searchInput').value.toLowerCase();
+                const store = db.transaction(STORE_NAME).objectStore(STORE_NAME);
+                const request = store.getAll();
+                
+                request.onsuccess = () => {
+                    const filtered = request.result.filter(item => 
+                        Object.values(item).some(v => String(v).toLowerCase().includes(query))
+                    );
+                    renderUI(filtered);
+                };
+            }, 300); // 300ms delay to keep UI snappy
+        }
+
+        function renderUI(data) {
+            const list = document.getElementById('resultsList');
+            document.getElementById('resultsCount').innerText = `${data.length} Total Records Found`;
+            
+            list.innerHTML = data.map(item => `
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 hover:border-blue-200 transition-colors">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <p class="text-[10px] font-bold text-blue-500 uppercase tracking-tighter">B-${item.block} • St-${item.street} • Plot ${item.plot}</p>
+                            <h3 class="text-md font-bold text-gray-800 uppercase">${item.name}</h3>
+                        </div>
+                        <span class="text-[9px] px-2 py-0.5 rounded-full border border-green-100 bg-green-50 text-green-600 font-bold uppercase">
+                            ${item.status}
+                        </span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs text-gray-500 mt-2 pt-2 border-t border-gray-50">
+                        <span><i class="fas fa-id-card mr-1 text-gray-300"></i> ${item.membership}</span>
+                        <a href="tel:${item.phone}" class="text-blue-600 font-bold flex items-center gap-1">
+                            <i class="fas fa-phone-alt"></i> ${item.phone}
+                        </a>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function clearLocalDB() {
+            if(confirm("Wipe local cache? You will need to re-upload database.docx.")) {
+                const transaction = db.transaction([STORE_NAME], "readwrite");
+                transaction.objectStore(STORE_NAME).clear();
+                transaction.oncomplete = () => location.reload();
+            }
+        }
+    </script>
+</body>
+</html>
