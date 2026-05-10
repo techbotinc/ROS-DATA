@@ -2,299 +2,123 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, 
-
-initial-scale=1.0">
-    <title>ROS Site- NOMI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ROS Site Master - Production</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
     <script src="https://cdn.tailwindcss.com"></script>
-    <script 
-
-src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0
-
-/mammoth.browser.min.js"></script>
-    <script 
-
-src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link 
-
-href="https://cdnjs.cloudflare.com/ajax/libs/font-
-
-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style type="text/tailwindcss">
+        @layer base {
+            body { @apply bg-[#f8fafc] text-[#1e293b] font-['Plus_Jakarta_Sans',sans-serif] overflow-x-hidden antialiased; }
+        }
+        @layer components {
+            .glass-header { @apply sticky top-0 z-40 bg-white/90 backdrop-blur-xl border-b border-slate-200/60 px-6 py-5 shadow-sm; }
+            .bottom-nav { @apply fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-2xl border-t border-slate-200/80 px-10 py-4 flex justify-around items-center shadow-[0_-5px_15px_rgba(0,0,0,0.03)]; }
+            .plot-card { @apply bg-white p-5 rounded-[22px] border border-slate-100 shadow-sm active:scale-[0.97] transition-all duration-200 flex justify-between items-center; }
+            .status-badge { @apply text-[8px] font-black px-3 py-1.5 rounded-full uppercase tracking-tighter; }
+        }
+    </style>
     <style>
-        @import url('https://fonts.googleapis.com/css2?
-
-family=Plus+Jakarta
-
-+Sans:wght@300;400;600;800&display=swap');
-        
-        :root {
-            --glass-bg: rgba(255, 255, 255, 0.9);
-            --glass-border: rgba(226, 232, 240, 0.8);
-        }
-
-        body { 
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            background-color: #f8fafc; 
-            color: #1e293b; 
-            margin: 0;
-            padding-bottom: 90px; /* Space for the bottom 
-
-nav */
-        }
-
-        .glass-effect { 
-            background: var(--glass-bg); 
-            backdrop-filter: blur(12px); 
-            border-bottom: 1px solid var(--glass-border); 
-        }
-
-        .bottom-nav-glass {
-            background: var(--glass-bg);
-            backdrop-filter: blur(16px);
-            border-top: 1px solid var(--glass-border);
-        }
-        
-        .status-resident { background: #dcfce7; color: 
-
-#166534; border-left: 4px solid #22c55e; }
-        .status-under-con { background: #fef9c3; color: 
-
-#854d0e; border-left: 4px solid #eab308; }
-        .status-boundary { background: #ffedd5; color: 
-
-#9a3412; border-left: 4px solid #f97316; }
-        .status-empty { background: #fee2e2; color: 
-
-#991b1b; border-left: 4px solid #ef4444; }
-
-        .nav-active { color: #2563eb; transform: 
-
-translateY(-2px); }
-        .no-scrollbar::-webkit-scrollbar { display: none; 
-
-}
-        
-        .animate-slide-up { animation: slideUp 0.3s 
-
-cubic-bezier(0.4, 0, 0.2, 1); }
-        @keyframes slideUp { from { transform: 
-
-translateY(100%); } to { transform: translateY(0); } }
-
-        /* Fix for card clicking smoothness */
-        .plot-card {
-            transition: transform 0.2s ease, box-shadow 
-
-0.2s ease;
-            cursor: pointer;
-        }
-        .plot-card:active { transform: scale(0.97); }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+        .status-resident { background: #dcfce7; color: #166534; border-left: 4px solid #22c55e; }
+        .status-under-con { background: #fef9c3; color: #854d0e; border-left: 4px solid #eab308; }
+        .status-boundary { background: #ffedd5; color: #9a3412; border-left: 4px solid #f97316; }
+        .status-empty { background: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444; }
+        .nav-link { @apply flex flex-col items-center gap-1 transition-all duration-300; }
+        .nav-link.active { @apply text-blue-600 scale-105; }
+        .nav-link:not(.active) { @apply text-slate-400; }
+        #syncOverlay { @apply fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-md flex flex-col items-center justify-center text-white hidden; }
+        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #3b82f6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
     </style>
 </head>
-<body>
+<body class="pb-24">
 
-    <header class="sticky top-0 z-40 glass-effect px-6 
+    <div id="syncOverlay">
+        <div class="loader mb-4"></div>
+        <p class="text-xs font-bold uppercase tracking-widest" id="syncText">Processing Data...</p>
+    </div>
 
-py-5 shadow-sm">
+    <header class="glass-header">
         <div class="max-w-md mx-auto">
-            <div class="flex justify-between items-center 
-
-mb-4">
-                <h1 id="pageTitle" class="text-2xl font-
-
-extrabold tracking-tight">ROS <span class="text-blue-
-
-600">Home</span></h1>
+            <div class="flex justify-between items-center mb-5">
+                <h1 id="pageTitle" class="text-2xl font-extrabold tracking-tight">ROS <span class="text-blue-600">Home</span></h1>
                 <div class="flex gap-3">
-                    <button onclick="toggleModal
-
-('recordModal')" class="bg-blue-600 text-white w-10 h-10 
-
-rounded-xl shadow-lg flex items-center justify-center 
-
-active:scale-90 transition-transform">
+                    <button onclick="toggleModal('recordModal')" class="bg-blue-600 text-white w-10 h-10 rounded-xl shadow-lg flex items-center justify-center active:scale-90 transition-transform">
                         <i class="fas fa-plus"></i>
                     </button>
-                    <label class="bg-white border 
-
-border-slate-200 text-slate-500 w-10 h-10 rounded-xl flex 
-
-items-center justify-center cursor-pointer hover:bg-
-
-slate-50 shadow-sm">
-                        <i class="fas fa-file-
-
-import"></i>
-                        <input type="file" id="fileInput" 
-
-class="hidden" accept=".docx" 
-
-onchange="syncWordToOfflineDB(this)">
+                    <label class="bg-white border border-slate-200 text-slate-500 w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer hover:bg-slate-50 shadow-sm">
+                        <i class="fas fa-file-import"></i>
+                        <input type="file" id="fileInput" class="hidden" accept=".docx" onchange="syncWordToOfflineDB(this)">
                     </label>
                 </div>
             </div>
-            
-            <div id="searchSection" class="space-y-4">
+            <div id="searchContainer">
                 <div class="relative">
-                    <input type="text" id="searchInput" 
-
-placeholder="Search Plot, Name, ID, or Phone..." 
-
-class="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-white/50 
-
-border border-slate-100 outline-none focus:ring-2 
-
-focus:ring-blue-500/20 font-medium" 
-
-oninput="debounceSearch()">
-                    <i class="fas fa-search absolute 
-
-left-4 top-4 text-slate-300"></i>
+                    <input type="text" id="searchInput" placeholder="Search Plot, Name, ID..." class="w-full pl-12 pr-4 py-4 rounded-[20px] bg-slate-100/50 outline-none font-semibold text-sm focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all" oninput="debounceSearch()">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"></i>
                 </div>
             </div>
         </div>
     </header>
 
-    <main class="max-w-md mx-auto px-6 mt-4">
+    <main class="max-w-md mx-auto px-6 mt-6">
         <div id="homeTab">
-            <div id="resultsCount" class="mb-4 text-
-
-[10px] font-extrabold text-slate-400 text-center 
-
-tracking-[0.2em] uppercase">Initializing...</div>
-            <div id="resultsList" class="space-y-4 pb-
-
-10">
-                </div>
+            <div id="resultsCount" class="mb-5 text-[10px] font-black text-slate-400 text-center tracking-[0.25em] uppercase">Checking Database...</div>
+            <div id="resultsList" class="space-y-4"></div>
         </div>
 
         <div id="summaryTab" class="hidden">
-            <div class="bg-white p-8 rounded-[2.5rem] 
-
-shadow-xl shadow-slate-200/50 mb-8 mt-4">
-                <canvas id="statusChart" class="max-h-
-
-[250px] mx-auto"></canvas>
+            <div class="bg-white p-8 rounded-[35px] shadow-sm border border-slate-100 mb-6">
+                <canvas id="statusChart" class="max-h-[260px]"></canvas>
             </div>
-            <div id="statCards" class="grid grid-cols-1 
-
-gap-4 pb-10"></div>
+            <div id="statCards" class="grid grid-cols-1 gap-3"></div>
         </div>
     </main>
 
-    <nav class="fixed bottom-0 left-0 right-0 z-50 
-
-bottom-nav-glass px-10 py-4 flex justify-around items-
-
-center">
-        <button onclick="switchTab('home')" id="homeBtn" 
-
-class="flex flex-col items-center gap-1 nav-active 
-
-transition-all">
+    <nav class="bottom-nav">
+        <button onclick="switchTab('home')" id="homeBtn" class="nav-link active">
             <i class="fas fa-house-chimney text-xl"></i>
-            <span class="text-[9px] font-black uppercase 
-
-tracking-widest">Home</span>
+            <span class="text-[9px] font-black uppercase tracking-widest">Home</span>
         </button>
-        <button onclick="switchTab('summary')" 
-
-id="summaryBtn" class="flex flex-col items-center gap-1 
-
-text-slate-400 transition-all">
+        <button onclick="switchTab('summary')" id="summaryBtn" class="nav-link">
             <i class="fas fa-chart-pie text-xl"></i>
-            <span class="text-[9px] font-black uppercase 
-
-tracking-widest">Summary</span>
+            <span class="text-[9px] font-black uppercase tracking-widest">Summary</span>
         </button>
     </nav>
 
-    <div id="detailOverlay" class="fixed inset-0 z-[60] 
-
-hidden bg-slate-900/40 backdrop-blur-md flex items-end 
-
-justify-center">
-        <div class="bg-white w-full max-w-md rounded-t-
-
-[3rem] p-8 shadow-2xl relative animate-slide-up">
-            <button onclick="closeDetail()" 
-
-class="absolute right-6 top-6 w-10 h-10 bg-slate-100 
-
-rounded-full flex items-center justify-center text-
-
-slate-400">
+    <div id="detailOverlay" class="fixed inset-0 z-[60] hidden bg-slate-900/40 backdrop-blur-md flex items-end justify-center">
+        <div class="bg-white w-full max-w-md rounded-t-[40px] p-10 shadow-2xl relative animate-slide-up">
+            <button onclick="closeDetail()" class="absolute right-8 top-8 w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400">
                 <i class="fas fa-times"></i>
             </button>
-            <div class="w-12 h-1 bg-slate-200 rounded-
-
-full mx-auto mb-6"></div>
             <div id="detailViewBody"></div>
         </div>
     </div>
 
-    <div id="recordModal" class="fixed inset-0 z-[70] 
-
-hidden bg-slate-900/60 backdrop-blur-sm flex items-center 
-
-justify-center px-6">
-        <div class="bg-white w-full max-w-sm rounded-
-
-[2.5rem] p-8 shadow-2xl">
-            <h2 class="font-extrabold text-xl mb-6">Plot 
-
-Entry</h2>
-            <form id="recordForm" class="grid grid-cols-2 
-
-gap-4 text-sm">
+    <div id="recordModal" class="fixed inset-0 z-[70] hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center px-6">
+        <div class="bg-white w-full max-w-sm rounded-[35px] p-8 shadow-2xl">
+            <h2 id="modalHeader" class="font-extrabold text-xl mb-6">Plot Registry</h2>
+            <form id="recordForm" class="grid grid-cols-2 gap-4 text-sm">
                 <input type="hidden" id="editId">
-                <input type="text" id="m_name" 
-
-placeholder="Name" class="col-span-2 bg-slate-50 p-4 
-
-rounded-xl outline-none" required>
-                <input type="text" id="m_phone" 
-
-placeholder="Phone" class="col-span-2 bg-slate-50 p-4 
-
-rounded-xl outline-none" required>
-                <input type="text" id="m_membership" 
-
-placeholder="Membership ID" class="col-span-2 bg-slate-50 
-
-p-4 rounded-xl outline-none">
-                <input type="text" id="m_block" 
-
-placeholder="Block" class="bg-slate-50 p-4 rounded-xl 
-
-outline-none" required>
-                <input type="text" id="m_plot" 
-
-placeholder="Plot #" class="bg-slate-50 p-4 rounded-xl 
-
-outline-none" required>
-                <select id="m_status" class="col-span-2 
-
-bg-slate-50 p-4 rounded-xl outline-none font-bold">
-                    <option 
-
-value="RESIDENT">RESIDENT</option>
-                    <option value="UNDER 
-
-CONSTRUCTION">UNDER CONSTRUCTION</option>
-                    <option value="BOUNDARY 
-
-WALL">BOUNDARY WALL</option>
+                <input type="text" id="m_name" placeholder="Name" class="col-span-2 bg-slate-50 p-4 rounded-xl outline-none" required>
+                <input type="text" id="m_phone" placeholder="Phone" class="col-span-2 bg-slate-50 p-4 rounded-xl outline-none" required>
+                <input type="text" id="m_membership" placeholder="Membership ID" class="col-span-2 bg-slate-50 p-4 rounded-xl outline-none">
+                <input type="text" id="m_block" placeholder="Block" class="bg-slate-50 p-4 rounded-xl outline-none uppercase" required>
+                <input type="text" id="m_plot" placeholder="Plot #" class="bg-slate-50 p-4 rounded-xl outline-none" required>
+                <select id="m_status" class="col-span-2 bg-slate-50 p-4 rounded-xl outline-none font-bold">
+                    <option value="RESIDENT">RESIDENT</option>
+                    <option value="UNDER CONSTRUCTION">UNDER CONSTRUCTION</option>
+                    <option value="BOUNDARY WALL">BOUNDARY WALL</option>
                     <option value="EMPTY">EMPTY</option>
                 </select>
-                <button type="button" 
-
-onclick="toggleModal('recordModal')" class="p-4 font-bold 
-
-text-slate-400">Cancel</button>
-                <button type="submit" class="bg-blue-600 
-
-text-white rounded-xl font-bold">Save</button>
+                <button type="button" onclick="toggleModal('recordModal')" class="p-4 text-slate-400 font-bold uppercase text-[10px]">Cancel</button>
+                <button type="submit" class="bg-blue-600 text-white rounded-2xl font-bold uppercase text-[10px]">Save</button>
             </form>
         </div>
     </div>
@@ -302,404 +126,171 @@ text-white rounded-xl font-bold">Save</button>
     <script>
         let db;
         let myChart = null;
-        const DB_NAME = "ROSSiteDB_Final_V10";
-        const STORE_NAME = "records";
+        const DB_NAME = "ROSSiteMaster_Prod_V2";
 
-        const request = indexedDB.open(DB_NAME, 1);
+        const request = indexedDB.open(DB_NAME, 2);
         request.onupgradeneeded = (e) => {
-            db = e.target.result;
-            db.createObjectStore(STORE_NAME, { keyPath: 
-
-"id", autoIncrement: true });
+            let database = e.target.result;
+            if (!database.objectStoreNames.contains("records")) {
+                database.createObjectStore("records", { keyPath: "id", autoIncrement: true });
+            }
         };
-        request.onsuccess = (e) => { db = 
-
-e.target.result; loadData(); };
+        request.onsuccess = (e) => {
+            db = e.target.result;
+            loadData();
+        };
 
         function switchTab(tab) {
             const isHome = tab === 'home';
-            document.getElementById
-
-('homeTab').classList.toggle('hidden', !isHome);
-            document.getElementById
-
-('summaryTab').classList.toggle('hidden', isHome);
-            document.getElementById
-
-('searchSection').classList.toggle('hidden', !isHome);
-            
-            document.getElementById('homeBtn').className 
-
-= isHome ? 'flex flex-col items-center gap-1 nav-active' 
-
-: 'flex flex-col items-center gap-1 text-slate-400';
-            document.getElementById
-
-('summaryBtn').className = !isHome ? 'flex flex-col 
-
-items-center gap-1 nav-active' : 'flex flex-col items-
-
-center gap-1 text-slate-400';
-            
-            document.getElementById
-
-('pageTitle').innerHTML = isHome ? 'ROS <span 
-
-class="text-blue-600">Home</span>' : 'ROS <span 
-
-class="text-blue-600">Stats</span>';
+            document.getElementById('homeTab').classList.toggle('hidden', !isHome);
+            document.getElementById('summaryTab').classList.toggle('hidden', isHome);
+            document.getElementById('homeBtn').classList.toggle('active', isHome);
+            document.getElementById('summaryBtn').classList.toggle('active', !isHome);
             if(!isHome) updateSummary();
         }
 
         function loadData() {
-            const query = document.getElementById
-
-('searchInput').value.toLowerCase();
-            db.transaction(STORE_NAME).objectStore
-
-(STORE_NAME).getAll().onsuccess = (e) => {
+            if(!db) return;
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const tx = db.transaction("records", "readonly");
+            const store = tx.objectStore("records");
+            store.getAll().onsuccess = (e) => {
                 let data = e.target.result;
                 if (query) {
                     data = data.filter(r => 
-                        r.name.toLowerCase().includes
-
-(query) || 
-                        r.plot.includes(query) || 
-                        r.phone.includes(query) ||
-                        (r.membership && 
-
-r.membership.toLowerCase().includes(query))
+                        r.name.toLowerCase().includes(query) || 
+                        r.plot.toString().includes(query) || 
+                        (r.membership && r.membership.toLowerCase().includes(query))
                     );
                 }
-                renderUI(data);
+                renderList(data);
             };
         }
 
-        function renderUI(data) {
-            const list = document.getElementById
-
-('resultsList');
-            document.getElementById
-
-('resultsCount').innerText = `${data.length} RECORDS 
-
-FOUND`;
+        function renderList(data) {
+            const list = document.getElementById('resultsList');
+            const count = document.getElementById('resultsCount');
+            if (data.length === 0) {
+                count.innerText = "DATABASE EMPTY";
+                list.innerHTML = `<div class="text-center py-20 text-slate-300 font-bold uppercase text-[10px] tracking-widest">No data. Please import the .docx file.</div>`;
+                return;
+            }
+            count.innerText = `${data.length} ACTIVE PLOTS`;
             list.innerHTML = data.map(r => `
-                <div onclick="showDetail(${r.id})" 
-
-class="plot-card bg-white p-5 rounded-2xl shadow-sm flex 
-
-justify-between items-center border border-slate-50">
+                <div onclick="showDetail(${r.id})" class="plot-card ${getStatusClass(r.status)}">
                     <div>
-                        <p class="text-[10px] font-black 
-
-text-blue-500 uppercase tracking-wider mb-1">B-${r.block} 
-
-• P-${r.plot} • ID: ${r.membership || '---'}</p>
-                        <h3 class="text-[15px] font-bold 
-
-text-slate-700 uppercase">${r.name}</h3>
+                        <p class="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-1">B-${r.block} • P-${r.plot}</p>
+                        <h3 class="text-sm font-extrabold text-slate-800 uppercase">${r.name}</h3>
                     </div>
-                    <span class="text-[8px] font-black 
-
-px-2.5 py-1 rounded-full uppercase ${getStatusStyling
-
-(r.status)}">${r.status}</span>
+                    <span class="status-badge ${getStatusClass(r.status)}">${r.status}</span>
                 </div>
             `).join('');
         }
 
         function showDetail(id) {
-            db.transaction(STORE_NAME).objectStore
-
-(STORE_NAME).get(id).onsuccess = (e) => {
+            db.transaction("records").objectStore("records").get(id).onsuccess = (e) => {
                 const r = e.target.result;
-                document.getElementById
-
-('detailViewBody').innerHTML = `
+                document.getElementById('detailViewBody').innerHTML = `
                     <div class="text-center mb-8">
-                        <h2 class="text-2xl font-black 
-
-text-slate-800 uppercase">${r.name}</h2>
-                        <span class="text-[10px] font-
-
-black px-5 py-1.5 rounded-full uppercase mt-3 inline-
-
-block ${getStatusStyling(r.status)}">${r.status}</span>
+                        <h2 class="text-2xl font-black text-slate-800 uppercase">${r.name}</h2>
+                        <span class="status-badge px-6 py-2 mt-4 inline-block ${getStatusClass(r.status)}">${r.status}</span>
                     </div>
-                    <div class="bg-slate-50 rounded-3xl 
-
-p-6 space-y-4 mb-8">
-                        <div class="flex justify-
-
-between"><span class="text-slate-400 font-bold uppercase 
-
-text-[9px]">Member ID</span><span class="font-bold text-
-
-blue-600">${r.membership || 'N/A'}</span></div>
-                        <div class="flex justify-
-
-between"><span class="text-slate-400 font-bold uppercase 
-
-text-[9px]">Location</span><span class="font-bold">Block 
-
-${r.block}, Plot ${r.plot}</span></div>
-                        <div class="flex justify-
-
-between"><span class="text-slate-400 font-bold uppercase 
-
-text-[9px]">Phone</span><span class="font-bold">
-
-${r.phone}</span></div>
+                    <div class="bg-slate-50 rounded-3xl p-6 space-y-4 mb-8 text-sm">
+                        <div class="flex justify-between"><span class="text-slate-400 font-bold">ID</span><span class="font-black text-blue-600">${r.membership || 'N/A'}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400 font-bold">Location</span><span class="font-bold">Block ${r.block}, Plot ${r.plot}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400 font-bold">Phone</span><span class="font-bold">${r.phone}</span></div>
                     </div>
                     <div class="flex gap-3">
-                        <a href="tel:${r.phone}" 
-
-class="flex-1 bg-slate-900 text-white h-16 rounded-2xl 
-
-flex items-center justify-center gap-2 font-bold 
-
-uppercase text-xs shadow-xl">
-                            <i class="fas fa-phone"></i> 
-
-Call
-                        </a>
-                        <button onclick="editRecord
-
-(${r.id})" class="w-16 h-16 bg-blue-50 text-blue-600 
-
-rounded-2xl"><i class="fas fa-edit"></i></button>
+                        <a href="tel:${r.phone}" class="flex-1 bg-slate-900 text-white h-14 rounded-2xl flex items-center justify-center gap-2 font-bold uppercase text-xs">Call</a>
+                        <button onclick="editRecord(${r.id})" class="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteRecord(${r.id})" class="w-14 h-14 bg-red-50 text-red-500 rounded-2xl"><i class="fas fa-trash"></i></button>
                     </div>
                 `;
-                document.getElementById
-
-('detailOverlay').classList.remove('hidden');
-            };
-        }
-
-        function updateSummary() {
-            db.transaction(STORE_NAME).objectStore
-
-(STORE_NAME).getAll().onsuccess = (e) => {
-                const d = e.target.result;
-                const s = { 
-                    R: d.filter
-
-(x=>x.status==='RESIDENT').length, 
-                    C: d.filter(x=>x.status==='UNDER 
-
-CONSTRUCTION').length, 
-                    B: d.filter(x=>x.status==='BOUNDARY 
-
-WALL').length, 
-                    E: d.filter
-
-(x=>x.status==='EMPTY').length 
-                };
-                
-                if(myChart) myChart.destroy();
-                myChart = new Chart
-
-(document.getElementById('statusChart'), {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Resident', 
-
-'Construction', 'Boundary', 'Empty'],
-                        datasets: [{ data: [s.R, s.C, 
-
-s.B, s.E], backgroundColor: ['#22c55e', '#eab308', 
-
-'#f97316', '#ef4444'], borderWidth: 0 }]
-                    },
-                    options: { cutout: '80%', plugins: { 
-
-legend: { display: false } } }
-                });
-
-                document.getElementById
-
-('statCards').innerHTML = `
-                    <div class="bg-white p-5 rounded-2xl 
-
-flex justify-between shadow-sm border-l-4 border-green-
-
-500"><span>Resident</span><span class="font-bold">${s.R}
-
-</span></div>
-                    <div class="bg-white p-5 rounded-2xl 
-
-flex justify-between shadow-sm border-l-4 border-yellow-
-
-500"><span>Construction</span><span class="font-bold">
-
-${s.C}</span></div>
-                    <div class="bg-white p-5 rounded-2xl 
-
-flex justify-between shadow-sm border-l-4 border-orange-
-
-500"><span>Boundary</span><span class="font-bold">${s.B}
-
-</span></div>
-                    <div class="bg-white p-5 rounded-2xl 
-
-flex justify-between shadow-sm border-l-4 border-red-
-
-500"><span>Empty</span><span class="font-bold">${s.E}
-
-</span></div>
-                `;
+                document.getElementById('detailOverlay').classList.remove('hidden');
             };
         }
 
         async function syncWordToOfflineDB(input) {
             const file = input.files[0];
             if (!file) return;
+            document.getElementById('syncOverlay').style.display = 'flex';
             const reader = new FileReader();
             reader.onload = async (e) => {
-                const result = await 
-
-mammoth.convertToHtml({ arrayBuffer: e.target.result });
-                const tempDiv = document.createElement
-
-('div');
+                const result = await mammoth.convertToHtml({ arrayBuffer: e.target.result });
+                const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = result.value;
-                const rows = Array.from
-
-(tempDiv.querySelectorAll('tr'));
-                const tx = db.transaction(STORE_NAME, 
-
-"readwrite");
-                const store = tx.objectStore(STORE_NAME);
+                const rows = Array.from(tempDiv.querySelectorAll('tr'));
+                const tx = db.transaction("records", "readwrite");
+                const store = tx.objectStore("records");
                 rows.forEach(row => {
-                    const cells = Array.from
-
-(row.querySelectorAll('td')).map(td => td.innerText.trim
-
-());
-                    if (cells.length >= 7 && !cells
-
-[0].toLowerCase().includes('s/n')) {
-                        let rawStatus = cells
-
-[7]?.toUpperCase() || 'EMPTY';
-                        let finalStatus = 
-
-rawStatus.includes('RESIDENT') ? 'RESIDENT' : 
-                                          
-
-rawStatus.includes('CONSTRUCTION') ? 'UNDER CONSTRUCTION' 
-
-:
-                                          
-
-rawStatus.includes('BOUNDARY') ? 'BOUNDARY WALL' : 
-
-'EMPTY';
-                        store.put({ sn: cells[0], block: 
-
-cells[1].toUpperCase(), street: cells[2], membership: 
-
-cells[3].toUpperCase(), plot: cells[4], name: cells
-
-[5].toUpperCase(), phone: cells[6], status: finalStatus 
-
-});
+                    const cells = Array.from(row.querySelectorAll('td')).map(td => td.innerText.trim());
+                    if (cells.length >= 7 && !cells[0].toLowerCase().includes('s/n')) {
+                        let st = (cells[7] || cells[cells.length-1] || 'EMPTY').toUpperCase();
+                        let finalStatus = st.includes('RESIDENT') ? 'RESIDENT' : st.includes('CONSTRUCTION') ? 'UNDER CONSTRUCTION' : st.includes('BOUNDARY') ? 'BOUNDARY WALL' : 'EMPTY';
+                        store.put({ sn: cells[0], block: cells[1].toUpperCase(), membership: cells[3].toUpperCase(), plot: cells[4], name: cells[5].toUpperCase(), phone: cells[6], status: finalStatus });
                     }
                 });
-                tx.oncomplete = () => loadData();
+                tx.oncomplete = () => {
+                    document.getElementById('syncOverlay').style.display = 'none';
+                    loadData();
+                };
             };
             reader.readAsArrayBuffer(file);
         }
 
-        function getStatusStyling(s) {
-            return s === 'RESIDENT' ? 'status-resident' : 
-
-s === 'UNDER CONSTRUCTION' ? 'status-under-con' : s === 
-
-'BOUNDARY WALL' ? 'status-boundary' : 'status-empty';
+        function updateSummary() {
+            db.transaction("records").objectStore("records").getAll().onsuccess = (e) => {
+                const d = e.target.result;
+                const s = { R: d.filter(x=>x.status==='RESIDENT').length, C: d.filter(x=>x.status.includes('CONSTRUCTION')).length, B: d.filter(x=>x.status.includes('BOUNDARY')).length, E: d.filter(x=>x.status==='EMPTY').length };
+                if(myChart) myChart.destroy();
+                myChart = new Chart(document.getElementById('statusChart'), { type: 'doughnut', data: { datasets: [{ data: [s.R, s.C, s.B, s.E], backgroundColor: ['#22c55e', '#eab308', '#f97316', '#ef4444'], borderWidth: 0 }] }, options: { cutout: '80%' }});
+                document.getElementById('statCards').innerHTML = `<div class="bg-white p-5 rounded-2xl flex justify-between shadow-sm"><span>Residents</span><span class="font-bold">${s.R}</span></div><div class="bg-white p-5 rounded-2xl flex justify-between shadow-sm"><span>Construction</span><span class="font-bold">${s.C}</span></div><div class="bg-white p-5 rounded-2xl flex justify-between shadow-sm"><span>Boundary Wall</span><span class="font-bold">${s.B}</span></div><div class="bg-white p-5 rounded-2xl flex justify-between shadow-sm"><span>Empty</span><span class="font-bold">${s.E}</span></div>`;
+            };
         }
+
+        function getStatusClass(s) {
+            if (s === 'RESIDENT') return 'status-resident';
+            if (s.includes('CONSTRUCTION')) return 'status-under-con';
+            if (s.includes('BOUNDARY')) return 'status-boundary';
+            return 'status-empty';
+        }
+
+        function deleteRecord(id) {
+            if(confirm("Delete record?")) {
+                const tx = db.transaction("records", "readwrite");
+                tx.objectStore("records").delete(id);
+                tx.oncomplete = () => { closeDetail(); loadData(); };
+            }
+        }
+
+        document.getElementById('recordForm').onsubmit = (e) => {
+            e.preventDefault();
+            const data = { name: document.getElementById('m_name').value.toUpperCase(), phone: document.getElementById('m_phone').value, membership: document.getElementById('m_membership').value.toUpperCase(), block: document.getElementById('m_block').value.toUpperCase(), plot: document.getElementById('m_plot').value, status: document.getElementById('m_status').value };
+            const id = document.getElementById('editId').value;
+            if (id) data.id = Number(id);
+            const tx = db.transaction("records", "readwrite");
+            tx.objectStore("records").put(data);
+            tx.oncomplete = () => { toggleModal('recordModal'); loadData(); };
+        };
 
         function editRecord(id) {
             closeDetail();
-            db.transaction(STORE_NAME).objectStore
-
-(STORE_NAME).get(id).onsuccess = (e) => {
+            db.transaction("records").objectStore("records").get(id).onsuccess = (e) => {
                 const r = e.target.result;
-                document.getElementById('editId').value = 
-
-r.id;
-                document.getElementById('m_name').value = 
-
-r.name;
-                document.getElementById('m_phone').value 
-
-= r.phone;
-                document.getElementById
-
-('m_membership').value = r.membership || '';
-                document.getElementById('m_block').value 
-
-= r.block;
-                document.getElementById('m_plot').value = 
-
-r.plot;
-                document.getElementById('m_status').value 
-
-= r.status;
+                document.getElementById('editId').value = r.id;
+                document.getElementById('m_name').value = r.name;
+                document.getElementById('m_phone').value = r.phone;
+                document.getElementById('m_membership').value = r.membership || '';
+                document.getElementById('m_block').value = r.block;
+                document.getElementById('m_plot').value = r.plot;
+                document.getElementById('m_status').value = r.status;
                 toggleModal('recordModal');
             };
         }
 
-        document.getElementById('recordForm').onsubmit = 
-
-(e) => {
-            e.preventDefault();
-            const data = {
-                name: document.getElementById
-
-('m_name').value.toUpperCase(),
-                phone: document.getElementById
-
-('m_phone').value,
-                membership: document.getElementById
-
-('m_membership').value.toUpperCase(),
-                block: document.getElementById
-
-('m_block').value.toUpperCase(),
-                plot: document.getElementById
-
-('m_plot').value,
-                status: document.getElementById
-
-('m_status').value
-            };
-            const id = document.getElementById
-
-('editId').value;
-            if (id) data.id = Number(id);
-            const tx = db.transaction(STORE_NAME, 
-
-"readwrite");
-            tx.objectStore(STORE_NAME).put(data);
-            tx.oncomplete = () => { toggleModal
-
-('recordModal'); loadData(); };
-        };
-
-        function toggleModal(id) { 
-
-document.getElementById(id).classList.toggle('hidden'); }
-        function closeDetail() { document.getElementById
-
-('detailOverlay').classList.add('hidden'); }
-        let searchTimeout;
-        function debounceSearch() { clearTimeout
-
-(searchTimeout); searchTimeout = setTimeout(loadData, 
-
-300); }
+        function toggleModal(id) { document.getElementById(id).classList.toggle('hidden'); if(!document.getElementById('editId').value) document.getElementById('recordForm').reset(); }
+        function closeDetail() { document.getElementById('detailOverlay').classList.add('hidden'); }
+        let t; function debounceSearch() { clearTimeout(t); t = setTimeout(loadData, 300); }
     </script>
 </body>
 </html>
